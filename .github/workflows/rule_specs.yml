@@ -1,0 +1,11 @@
+on: pull_request
+
+name: Specs Exist
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Ensure Each Rule has a Spec
+        run: ls $(for spec in $(ls lib/claws/rule/ | sed 's/\.rb/_spec\.rb/g'); do echo spec/claws/rule/$spec; done) >/dev/null

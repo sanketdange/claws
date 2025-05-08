@@ -1,0 +1,3 @@
+remote: Betterment/policy-bot-config
+path: security-policy.yml
+ref: main

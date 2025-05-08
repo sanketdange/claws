@@ -1,0 +1,6 @@
+require "claws/application"
+require "claws/engine"
+require "claws/formatters"
+require "claws/rule"
+require "claws/violation"
+require "claws/workflow"

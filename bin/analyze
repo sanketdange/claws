@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "claws"
+require "slop"
+
+flags = Slop::Options.new
+flags.banner =  "usage: process [options] ..."
+flags.separator ""
+flags.separator "Options:"
+flags.string "-c", "--config", required: true
+flags.string "-f", "--format", default: "stdout"
+flags.array "-t", "--target", required: true
+
+parser = Slop::Parser.new flags
+begin
+  result = parser.parse ARGV
+  options = result.to_hash
+rescue Slop::Error => e
+  puts e
+  puts flags
+  exit 1
+end
+
+unless File.exist? options[:config]
+  puts "Couldn't load config file: #{options[:config]}"
+  exit 1
+end
+
+missing_files = options[:target].reject { |f| File.file? f }
+unless missing_files.empty?
+  puts "Couldn't find files: #{missing_files.inspect}"
+  exit 1
+end
+
+formatter = case options[:format]
+            when "stdout" then Claws::Formatter::Stdout
+            when "github" then Claws::Formatter::Github
+            else
+              puts "Unknown output format: #{options[:format]}"
+              exit 1
+            end
+
+app = Claws::Application.new
+configuration = YAMLWithLines.load(File.open(options[:config]).read)
+enabled_detections = configuration.fetch("Enabled", {}).keys
+enabled_detections.each do |detection_name|
+  data = configuration["Enabled"][detection_name] || {}
+  detection = Object.const_get("Claws::Rule::#{detection_name}")
+                    .new(configuration: data)
+  app.load_detection(detection)
+end
+
+violations_seen = false
+options[:target].each do |target|
+  violations = app.analyze(target, File.open(target).read)
+  violations_seen = true unless violations.empty?
+
+  formatter.report_violations(violations)
+end
+
+exit 1 if violations_seen

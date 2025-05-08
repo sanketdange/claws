@@ -1,0 +1,60 @@
+name: Gem Release
+
+# Sometimes a release workflow can break due to external dependencies.
+# These can be tedious to remediate, so setting up `workflow_dispatch`
+# means we can manually test the process without having to make back
+# to back no-op releases.
+#
+# ignore: RiskyTriggers
+on:
+  push:
+    branches:
+    - main
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force a release'
+        required: false
+        default: false
+        type: boolean
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby 3.X
+      uses: ruby/setup-ruby@ca041f971d66735f3e5ff1e21cc13e2d51e7e535 # v1.233.0
+      with:
+        ruby-version: '3.0'
+        bundler-cache: true
+    - name: Run the default task
+      run: bundle exec rake
+
+  publish:
+    needs: build
+    if: needs.build.result == 'success' && (github.event_name == 'push' || inputs.force_release)
+    runs-on: ubuntu-latest
+    name: Publish
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Publish to RubyGems
+      if: needs.build.result == 'success' || github.event.inputs.force_release == true
+      run: |
+        gem build claws-scan.gemspec --output release.gem
+
+        mkdir -p "$HOME/.gem"
+        touch "$HOME/.gem/credentials"
+        chmod 0600 "$HOME/.gem/credentials"
+        printf -- "---\n:rubygems_api_key: %s\n" "$GEM_HOST_API_KEY" > "$HOME/.gem/credentials"
+        if [[ "$FORCE_RELEASE" == "true" ]]
+        then
+          gem push release.gem || exit 0
+        else
+          gem push release.gem
+        fi
+      env:
+        GEM_HOST_API_KEY: "${{secrets.RUBYGEMS_AUTH_TOKEN}}"
+        FORCE_RELEASE: "${{ github.event.inputs.force_release }}"
