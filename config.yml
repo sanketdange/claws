@@ -1,11 +1,11 @@
 Enabled:
   NoContainers:
-    approved_images: ['ubuntu-latest']
+    approved_images: ['bp-ubuntu-latest-x64-4x']
   SpecialPermissions:
   EmptyName:
   RiskyTriggers:
   UnapprovedRunners:
-    allowed_runners: ["ubuntu-latest", "macos-12"]
+    allowed_runners: ["bp-ubuntu-latest-x64-4x", "macos-12"]
   CommandInjection:
   AutomaticMerge:
   UnpinnedAction:
